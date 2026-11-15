@@ -72,9 +72,56 @@ No secrets in the client config — they stay in `.env` (`chmod 600 .env`).
 | stdio (default) | `python -m app` | MCP client launches it itself |
 | HTTP | `python -m app --http` → `http://127.0.0.1:8000/mcp` | testing in a browser/Inspector, or a long-running local server |
 
-Options: `--host` / `--port` (or `HOME_MCP_HTTP_HOST` / `HOME_MCP_HTTP_PORT` in `.env`).
-HTTP mode has **no authentication** — keep it on `127.0.0.1` unless you put it
-behind an authenticating proxy.
+Options: `--host` / `--port` (or `HOME_MCP_HTTP_HOST` / `HOME_MCP_HTTP_PORT`, or
+the `PORT` env var that Cloud Run injects). `--stateless` (or
+`FASTMCP_STATELESS_HTTP=1`) runs a fresh transport per request — needed when the
+server can run more than one instance.
+
+HTTP mode has **no authentication by default** — keep it on `127.0.0.1`, or set
+`HOME_MCP_AUTH_TOKEN` to require `Authorization: Bearer <token>` on every request.
+
+## Deploy to Cloud Run
+
+The `Dockerfile` runs `python -m app --http` on `0.0.0.0:$PORT` (8080 on Cloud Run).
+
+```bash
+gcloud run deploy home-mcp \
+  --source . \
+  --region europe-west1 \
+  --max-instances 1 \
+  --set-env-vars MYUPLINK_LANGUAGE=en-GB,HOME_MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
+  --set-secrets MYUPLINK_CLIENT_ID=myuplink-client-id:latest,MYUPLINK_CLIENT_SECRET=myuplink-client-secret:latest \
+  --allow-unauthenticated   # needed for MCP clients; the bearer token guards access
+```
+
+Notes:
+
+- **`--allow-unauthenticated` + `HOME_MCP_AUTH_TOKEN`**: GCP IAM auth doesn't work
+  with MCP clients (they can't mint Google ID tokens), so the app enforces its own
+  bearer token instead. Save the generated token — you'll need it below.
+- **`--max-instances 1`**: streamable HTTP keeps session state in memory. Either
+  pin to one instance, or set `FASTMCP_STATELESS_HTTP=1` to allow scaling
+  (a fresh transport is created per request).
+- **min-instances 0** (the default) means cold starts — the first call after idle
+  re-fetches the OAuth token, adding ~1s.
+- Put `MYUPLINK_CLIENT_ID` / `MYUPLINK_CLIENT_SECRET` in Secret Manager
+  (`gcloud secrets create ...`) — never bake `.env` into the image.
+
+Point your MCP client at the service URL via `mcp-remote` with the token:
+
+```json
+{
+  "mcpServers": {
+    "home-mcp": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote", "https://home-mcp-XXXX.europe-west1.run.app/mcp",
+        "--header", "Authorization: Bearer YOUR_TOKEN"
+      ]
+    }
+  }
+}
+```
 
 ## Try
 
