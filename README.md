@@ -25,7 +25,7 @@ More integrations can be added as drop-in modules in `app/services/`.
 | `meteo_find_places` | Search meteo.lt place codes |
 | `meteo_forecast` | Long-term forecast for a place code |
 
-✏️ = needs myUplink Premium. Set `MYUPLINK_READ_ONLY=1` to remove them.
+✏️ = needs myUplink Premium. Set `myuplink_read_only=True` in `app/config.py` to remove them.
 
 ## Setup
 
@@ -89,7 +89,7 @@ gcloud run deploy home-mcp \
   --source . \
   --region europe-west1 \
   --max-instances 1 \
-  --set-env-vars MYUPLINK_LANGUAGE=en-GB,HOME_MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
+  --set-env-vars HOME_MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
   --set-secrets MYUPLINK_CLIENT_ID=myuplink-client-id:latest,MYUPLINK_CLIENT_SECRET=myuplink-client-secret:latest \
   --allow-unauthenticated   # needed for MCP clients; the bearer token guards access
 ```

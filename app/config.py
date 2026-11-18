@@ -13,10 +13,6 @@ ENV_FILE = Path(
 load_dotenv(ENV_FILE, override=False)
 
 
-def _env_flag(name: str, default: str = "") -> bool:
-    return os.getenv(name, default).lower() in ("1", "true", "yes")
-
-
 @dataclass(frozen=True)
 class Settings:
     """Runtime configuration, loaded from environment / .env file."""
@@ -28,12 +24,14 @@ class Settings:
     # Optional overrides
     myuplink_base_url: str
     myuplink_token_url: str
-    myuplink_language: str
-    myuplink_read_only: bool
 
     meteo_base_url: str
 
     http_timeout_seconds: float
+
+    # Defaults — change here rather than via env vars
+    myuplink_language: str = "en-GB"
+    myuplink_read_only: bool = False
 
     @property
     def myuplink_configured(self) -> bool:
@@ -53,8 +51,6 @@ def get_settings() -> Settings:
         myuplink_token_url=os.getenv(
             "MYUPLINK_TOKEN_URL", "https://api.myuplink.com/oauth/token"
         ),
-        myuplink_language=os.getenv("MYUPLINK_LANGUAGE", "en-GB"),
-        myuplink_read_only=_env_flag("MYUPLINK_READ_ONLY"),
         meteo_base_url=os.getenv("METEO_BASE_URL", "https://api.meteo.lt/v1"),
         http_timeout_seconds=float(os.getenv("HTTP_TIMEOUT_SECONDS", "30")),
     )

@@ -5,7 +5,7 @@ https://dev.myuplink.com/ to obtain a client ID and secret.
 API docs: https://dev.myuplink.com/apis
 
 Write tools (nibe_set_point, nibe_set_smart_home_mode) need a myUplink Premium
-subscription and are not registered when MYUPLINK_READ_ONLY=1.
+subscription and are not registered when myuplink_read_only=True in Settings.
 """
 
 import logging
@@ -107,8 +107,18 @@ class MyUplinkClient:
 _SYSTEMS_TTL = 300  # seconds — stay within rate limits
 
 
+def _scale(p: dict) -> float:
+    """myUplink reports min/max/step raw while `value` is scaled by scaleValue
+    (e.g. 0.1 → min 50 really means 5.0). PATCH expects the scaled value."""
+    try:
+        return float(p.get("scaleValue") or 1)
+    except (TypeError, ValueError):
+        return 1.0
+
+
 def _compact_point(p: dict) -> dict:
     """Trim a raw data point to what is useful for an MCP client."""
+    scale = _scale(p)
     out: dict[str, Any] = {
         "id": p.get("parameterId"),
         "name": p.get("parameterName"),
@@ -124,7 +134,7 @@ def _compact_point(p: dict) -> dict:
             ("stepValue", "step"),
         ):
             if p.get(k_src) is not None:
-                out[k_dst] = p[k_src]
+                out[k_dst] = p[k_src] * scale
     enums = p.get("enumValues") or []
     if enums:
         out["options"] = {e.get("value"): e.get("text") for e in enums}
@@ -164,7 +174,13 @@ def _validate(point: dict, value: str) -> str:
         num = float(value)
     except ValueError:
         return value  # non-numeric, non-enum: let the API decide
-    lo, hi = point.get("minValue"), point.get("maxValue")
+    scale = _scale(point)
+    lo = point.get("minValue")
+    hi = point.get("maxValue")
+    if lo is not None:
+        lo = float(lo) * scale
+    if hi is not None:
+        hi = float(hi) * scale
     if lo is not None and num < float(lo):
         raise MyUplinkError(
             f"{num} is below the minimum {lo} {point.get('parameterUnit', '')}."
@@ -346,7 +362,7 @@ def register(mcp: FastMCP, settings: Settings) -> None:
         return client.get(f"/v2/systems/{_resolve_system(system_id)}/smart-home-mode")
 
     if settings.myuplink_read_only:
-        logger.info("MYUPLINK_READ_ONLY set — NIBE write tools not registered")
+        logger.info("myuplink_read_only set — NIBE write tools not registered")
         return
 
     write_annotations = {"destructiveHint": True, "idempotentHint": True}
