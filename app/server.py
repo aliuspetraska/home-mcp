@@ -5,16 +5,18 @@ import sys
 
 from fastmcp import FastMCP
 
+from app.auth import resolve_auth_token
 from app.config import get_settings
 from app.services import register_all
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# Optional bearer-token auth for HTTP transport. If HOME_MCP_AUTH_TOKEN is set,
-# clients must send "Authorization: Bearer <token>". Stdio ignores auth.
+# Optional bearer-token auth for HTTP transport. Clients must send
+# "Authorization: Bearer <token>". Stdio ignores auth. The token comes from
+# HOME_MCP_AUTH_TOKEN, or is self-issued via GCP Secret Manager on Cloud Run.
 _auth = None
-if _token := os.environ.get("HOME_MCP_AUTH_TOKEN"):
+if _token := resolve_auth_token():
     from fastmcp.server.auth import StaticTokenVerifier
 
     _auth = StaticTokenVerifier(
@@ -25,10 +27,12 @@ mcp = FastMCP(
     name="home-mcp",
     instructions=(
         "Home services: NIBE heat pump via myUplink (status, temperatures, points, "
-        "alarms, settings) and weather forecasts from meteo.lt (Lithuanian "
-        "Hydrometeorological Service). Call nibe_list_systems first to get IDs. "
-        "Before nibe_set_point or nibe_set_smart_home_mode, show the user the "
-        "current value and confirm the change."
+        "alarms, settings), weather forecasts from meteo.lt (Lithuanian "
+        "Hydrometeorological Service), and Shelly smart home devices via the "
+        "Shelly Cloud (device list, status, switch/cover/light/group control). "
+        "Call nibe_list_systems or shelly_list_devices first to get IDs. "
+        "Before nibe_set_point, nibe_set_smart_home_mode or any shelly_*_set "
+        "call, show the user the current value and confirm the change."
     ),
     auth=_auth,
 )

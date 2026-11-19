@@ -21,6 +21,10 @@ class Settings:
     myuplink_client_id: str
     myuplink_client_secret: str
 
+    # Shelly Cloud — Shelly app → User settings → "Authorization cloud key"
+    shelly_server_url: str
+    shelly_auth_key: str
+
     # Optional overrides
     myuplink_base_url: str
     myuplink_token_url: str
@@ -38,6 +42,10 @@ class Settings:
         return bool(self.myuplink_client_id and self.myuplink_client_secret)
 
     @property
+    def shelly_configured(self) -> bool:
+        return bool(self.shelly_server_url and self.shelly_auth_key)
+
+    @property
     def myuplink_scopes(self) -> str:
         return "READSYSTEM" if self.myuplink_read_only else "READSYSTEM WRITESYSTEM"
 
@@ -47,6 +55,8 @@ def get_settings() -> Settings:
     return Settings(
         myuplink_client_id=os.getenv("MYUPLINK_CLIENT_ID", ""),
         myuplink_client_secret=os.getenv("MYUPLINK_CLIENT_SECRET", ""),
+        shelly_server_url=os.getenv("SHELLY_SERVER_URL", ""),
+        shelly_auth_key=os.getenv("SHELLY_AUTH_KEY", ""),
         myuplink_base_url=os.getenv("MYUPLINK_BASE_URL", "https://api.myuplink.com"),
         myuplink_token_url=os.getenv(
             "MYUPLINK_TOKEN_URL", "https://api.myuplink.com/oauth/token"

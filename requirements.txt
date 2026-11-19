@@ -1,4 +1,5 @@
 fastmcp
 httpx
 python-dotenv
+google-cloud-secret-manager
 black

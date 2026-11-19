@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 SERVICE_MODULES = (
     "app.services.myuplink",
     "app.services.meteo",
+    "app.services.shelly",
 )
 
 
